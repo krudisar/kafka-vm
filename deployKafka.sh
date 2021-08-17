@@ -10,6 +10,9 @@ CONFIG_FILE=zookeeper.properties
 MACHINE_NAME_PREFIX=kafka
 VM_DNS_DOMAIN=krdemo.local
 
+declare -a arrayIps=()
+declare -a arrayFqdns=()
+
 # get number of nodes in the cluster
 KAFKA_NODES=`jq $JSON_QUERY $JSON_FILE | sed -e 's/^"//' -e 's/"$//'`
 
@@ -27,11 +30,18 @@ for ((i = 0 ; i < $KAFKA_NODES ; i++)); do
 
   echo -e $NODE_IP '\t' $NODE_NAME'.'$VM_DNS_DOMAIN >> $OUTPUT_FILE
 
-  # add to array
-  arrayIps+=$NODE_IP
-  echo ${arrayIps[$(i)]}
-  arrayFqdns+=$NODE_NAME'.'$VM_DNS_DOMAIN
-  echo ${arrayFqdns[$(i)]}
+  # add node IP into array
+  arrayIps[${#arrayIps[@]}]=$NODE_IP
+  echo ${arrayIps[$i]}
+
+  # add node FQDN into array
+  arrayFqdns[${#arrayFqdns[@]}]=$NODE_NAME'.'$VM_DNS_DOMAIN
+  echo ${arrayFqdns[$i]}
+  
+  # echo ${#arrayIps[@]} # returns number of items in the array
+  # echo ${arrayIps[@]}  # returns content of the array
+  # echo ${arrayIps[$i]} # returns specific nth value in the array
+  
 done
 
 # ------- zookeeper.properties --------
