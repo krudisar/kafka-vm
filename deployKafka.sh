@@ -67,14 +67,36 @@ echo "autopurge.purgeInterval=24" >> $CONFIG_FILE
 # ------- Copy files to the rest of the cluster's nodes and enable services --------
 
 SSHUSERNAME=demo
-SSHOPTIONS='-o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no'
+SSHOPTIONS='-o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -q'
 PASSWORDFILE=/root/.sshpassword
 
-# ... copy configuration files
-sudo sshpass -f $PASSWORDFILE scp $SSHOPTIONS $CONFIG_FILE $SSHUSERNAME@$NODE_IP:/tmp/$CONFIG_FILE
-sudo sshpass -f $PASSWORDFILE scp $SSHOPTIONS $OUTPUT_FILE $SSHUSERNAME@$NODE_IP:/tmp/$OUTPUT_FILE
+for ((i = 0 ; i < $KAFKA_NODES ; i++)); do
 
-# ... replace and merge 
-sudo sshpass -f $PASSWORDFILE ssh $SSHOPTIONS $SSHUSERNAME@$NODE_IP "sudo mv /etc/kafka/$CONFIG_FILE /etc/kafka/$CONFIG_FILE.orig"
-sudo sshpass -f $PASSWORDFILE ssh $SSHOPTIONS $SSHUSERNAME@$NODE_IP "sudo cp /tmp/$CONFIG_FILE /etc/kafka/$CONFIG_FILE"
-sudo sshpass -f $PASSWORDFILE ssh $SSHOPTIONS $SSHUSERNAME@$NODE_IP "cat /tmp/$OUTPUT_FILE | sudo tee -a /etc/hosts"
+  TMP_IP=${arrayIps[$i]}
+  echo 'Going to process cluster with IP:'${arrayIps[$i]}
+
+    if (( $i == 0 )); then
+        # for the first node we configure files locally
+        #
+        sudo mv /etc/kafka/$CONFIG_FILE /etc/kafka/$CONFIG_FILE.orig
+        sudo cp /tmp/$CONFIG_FILE /etc/kafka/$CONFIG_FILE
+        cat /tmp/$OUTPUT_FILE | sudo tee -a /etc/hosts
+        #
+        sudo systemctl enable confluent-zookeeper
+        sudo systemctl start confluent-zookeeper
+    else
+        # for the rest of the cluster nodes we are going to configure them remotely
+        #
+        # ... copy configuration files
+        sudo sshpass -f $PASSWORDFILE scp $SSHOPTIONS $CONFIG_FILE $SSHUSERNAME@$TMP_IP:/tmp/$CONFIG_FILE
+        sudo sshpass -f $PASSWORDFILE scp $SSHOPTIONS $OUTPUT_FILE $SSHUSERNAME@$TMP_IP:/tmp/$OUTPUT_FILE
+
+        # ... replace and merge
+        sudo sshpass -f $PASSWORDFILE ssh $SSHOPTIONS $SSHUSERNAME@$TMP_IP "sudo mv /etc/kafka/$CONFIG_FILE /etc/kafka/$CONFIG_FILE.orig"
+        sudo sshpass -f $PASSWORDFILE ssh $SSHOPTIONS $SSHUSERNAME@$TMP_IP "sudo cp /tmp/$CONFIG_FILE /etc/kafka/$CONFIG_FILE"
+        sudo sshpass -f $PASSWORDFILE ssh $SSHOPTIONS $SSHUSERNAME@$TMP_IP "cat /tmp/$OUTPUT_FILE | sudo tee -a /etc/hosts"
+        #
+        sudo sshpass -f $PASSWORDFILE ssh $SSHOPTIONS $SSHUSERNAME@$TMP_IP "sudo systemctl enable confluent-zookeeper && sudo systemctl start confluent-zookeeper"
+    fi
+
+done
