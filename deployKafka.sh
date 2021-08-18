@@ -68,8 +68,8 @@ echo "autopurge.purgeInterval=24" >> $CONFIG_FILE
 # ------- /etc/kafka/server.properties --------
 sudo sed -i 's/^broker.id/#&/' /etc/kafka/$SERVER_CONFIG_FILE
 sudo sed -i 's/^zookeeper.connect=/#&/' /etc/kafka/$SERVER_CONFIG_FILE
-echo 'broker.id.generation.enable=true' | sudo tee -a /etc/kafka/$SERVER_CONFIG_FILE
-echo 'zookeeper.connect=kafka1.$VM_DNS_DOMAIN:2181' | sudo tee -a /etc/kafka/$SERVER_CONFIG_FILE
+echo "broker.id.generation.enable=true" | sudo tee -a /etc/kafka/$SERVER_CONFIG_FILE
+echo "zookeeper.connect=kafka1.$VM_DNS_DOMAIN:2181" | sudo tee -a /etc/kafka/$SERVER_CONFIG_FILE
 
 # ------- Copy files to the rest of the cluster's nodes and enable services --------
 
