@@ -116,3 +116,6 @@ for ((i = 0 ; i < $KAFKA_NODES ; i++)); do
     fi
 
 done
+
+echo "------------------"
+echo "Confluent license:" $CONFLUENT_LICENSE
