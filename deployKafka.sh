@@ -7,6 +7,7 @@ JSON_FILE=deployment.json
 JSON_QUERY='.resources."'$VM_NAME'[0]".count'
 OUTPUT_FILE=dns_records.txt
 CONFIG_FILE=zookeeper.properties
+SERVER_CONFIG_FILE=server.properties
 MACHINE_NAME_PREFIX=kafka
 VM_DNS_DOMAIN=krdemo.local
 
@@ -44,7 +45,7 @@ for ((i = 0 ; i < $KAFKA_NODES ; i++)); do
   
 done
 
-# ------- zookeeper.properties --------
+# ------- /etc/kafka/zookeeper.properties --------
 echo 'Going to generate zookeeper.properties file ...'
 echo "INFO: Number of cluster nodes: " $CLUSTER_NODES
 # ---
@@ -64,6 +65,12 @@ done
 echo "autopurge.snapRetainCount=3" >> $CONFIG_FILE
 echo "autopurge.purgeInterval=24" >> $CONFIG_FILE
 
+# ------- /etc/kafka/server.properties --------
+sudo sed -i 's/^broker.id/#&/' /etc/kafka/$SERVER_CONFIG_FILE
+sudo sed -i 's/^zookeeper.connect=/#&/' /etc/kafka/$SERVER_CONFIG_FILE
+echo 'broker.id.generation.enable=true' | sudo tee -a /etc/kafka/$SERVER_CONFIG_FILE
+echo 'zookeeper.connect=kafka1.$VM_DNS_DOMAIN:2181' | sudo tee -a /etc/kafka/$SERVER_CONFIG_FILE
+
 # ------- Copy files to the rest of the cluster's nodes and enable services --------
 
 SSHUSERNAME=demo
@@ -79,9 +86,10 @@ for ((i = 0 ; i < $KAFKA_NODES ; i++)); do
         # for the first node we configure files locally
         #
         sudo mv /etc/kafka/$CONFIG_FILE /etc/kafka/$CONFIG_FILE.orig
-        sudo cp /tmp/$CONFIG_FILE /etc/kafka/$CONFIG_FILE
-        cat /tmp/$OUTPUT_FILE | sudo tee -a /etc/hosts
+        sudo cp $CONFIG_FILE /etc/kafka/$CONFIG_FILE
+        cat $OUTPUT_FILE | sudo tee -a /etc/hosts
         #
+        sleep 20
         sudo systemctl enable confluent-zookeeper
         sudo systemctl start confluent-zookeeper
     else
@@ -89,13 +97,21 @@ for ((i = 0 ; i < $KAFKA_NODES ; i++)); do
         #
         # ... copy configuration files
         sudo sshpass -f $PASSWORDFILE scp $SSHOPTIONS $CONFIG_FILE $SSHUSERNAME@$TMP_IP:/tmp/$CONFIG_FILE
+        sudo sshpass -f $PASSWORDFILE scp $SSHOPTIONS /etc/kafka/$SERVER_CONFIG_FILE $SSHUSERNAME@$TMP_IP:/tmp/$SERVER_CONFIG_FILE
         sudo sshpass -f $PASSWORDFILE scp $SSHOPTIONS $OUTPUT_FILE $SSHUSERNAME@$TMP_IP:/tmp/$OUTPUT_FILE
 
-        # ... replace and merge
+        # ... backup and replace and merge /etc/kafka/zookeeper.properties
         sudo sshpass -f $PASSWORDFILE ssh $SSHOPTIONS $SSHUSERNAME@$TMP_IP "sudo mv /etc/kafka/$CONFIG_FILE /etc/kafka/$CONFIG_FILE.orig"
         sudo sshpass -f $PASSWORDFILE ssh $SSHOPTIONS $SSHUSERNAME@$TMP_IP "sudo cp /tmp/$CONFIG_FILE /etc/kafka/$CONFIG_FILE"
+        
+        # ... backup and replace and merge /etc/kafka/server.properties        
+        sudo sshpass -f $PASSWORDFILE ssh $SSHOPTIONS $SSHUSERNAME@$TMP_IP "sudo mv /etc/kafka/$SERVER_CONFIG_FILE /etc/kafka/$SERVER_CONFIG_FILE.orig"
+        sudo sshpass -f $PASSWORDFILE ssh $SSHOPTIONS $SSHUSERNAME@$TMP_IP "sudo cp /tmp/$SERVER_CONFIG_FILE /etc/kafka/$SERVER_CONFIG_FILE"
+        
+        # ... add new DNS records to the /etc/hosts file
         sudo sshpass -f $PASSWORDFILE ssh $SSHOPTIONS $SSHUSERNAME@$TMP_IP "cat /tmp/$OUTPUT_FILE | sudo tee -a /etc/hosts"
         #
+        sleep 20
         sudo sshpass -f $PASSWORDFILE ssh $SSHOPTIONS $SSHUSERNAME@$TMP_IP "sudo systemctl enable confluent-zookeeper && sudo systemctl start confluent-zookeeper"
     fi
 
