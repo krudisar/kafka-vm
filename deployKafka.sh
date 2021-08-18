@@ -8,6 +8,7 @@ JSON_QUERY='.resources."'$VM_NAME'[0]".count'
 OUTPUT_FILE=dns_records.txt
 CONFIG_FILE=zookeeper.properties
 SERVER_CONFIG_FILE=server.properties
+CC_CONFIG_FILE=control-center-production.properties
 MACHINE_NAME_PREFIX=kafka
 VM_DNS_DOMAIN=krdemo.local
 
@@ -71,6 +72,11 @@ sudo sed -i 's/^zookeeper.connect=/#&/' /etc/kafka/$SERVER_CONFIG_FILE
 echo "broker.id.generation.enable=true" | sudo tee -a /etc/kafka/$SERVER_CONFIG_FILE
 echo "zookeeper.connect=kafka1.$VM_DNS_DOMAIN:2181" | sudo tee -a /etc/kafka/$SERVER_CONFIG_FILE
 
+# ------- /etc/confluent-control-center/control-center-production.properties --------
+echo 'bootstrap.servers=kafka1.krdemo.local:2181,kafka2.krdemo.local:2181' | sudo tee -a /etc/confluent-control-center/$CC_CONFIG_FILE
+echo 'zookeeper.connect=kafka1.krdemo.local:2181,kafka2.krdemo.local:2181' | sudo tee -a /etc/confluent-control-center/$CC_CONFIG_FILE
+echo "confluent.license="$CONFLUENT_LICENSE | sudo tee -a /etc/confluent-control-center/$CC_CONFIG_FILE
+
 # ------- Copy files to the rest of the cluster's nodes and enable services --------
 
 SSHUSERNAME=demo
@@ -89,33 +95,52 @@ for ((i = 0 ; i < $KAFKA_NODES ; i++)); do
         sudo cp $CONFIG_FILE /etc/kafka/$CONFIG_FILE
         cat $OUTPUT_FILE | sudo tee -a /etc/hosts
         #
+        
         sleep 20
         sudo systemctl enable confluent-zookeeper
         sudo systemctl start confluent-zookeeper
+        
+        #sleep 10
+        #sudo systemctl enable confluent-server
+        #sudo systemctl start confluent-server
+        
+        #sleep10
+        #sudo systemctl enable confluent-control-center
+        #sudo systemctl start confluent-control-center
+        
     else
         # for the rest of the cluster nodes we are going to configure them remotely
         #
         # ... copy configuration files
         sudo sshpass -f $PASSWORDFILE scp $SSHOPTIONS $CONFIG_FILE $SSHUSERNAME@$TMP_IP:/tmp/$CONFIG_FILE
         sudo sshpass -f $PASSWORDFILE scp $SSHOPTIONS /etc/kafka/$SERVER_CONFIG_FILE $SSHUSERNAME@$TMP_IP:/tmp/$SERVER_CONFIG_FILE
+        sudo sshpass -f $PASSWORDFILE scp $SSHOPTIONS /etc/confluent-control-center/$CC_CONFIG_FILE $SSHUSERNAME@$TMP_IP:/tmp/$CC_CONFIG_FILE
         sudo sshpass -f $PASSWORDFILE scp $SSHOPTIONS $OUTPUT_FILE $SSHUSERNAME@$TMP_IP:/tmp/$OUTPUT_FILE
-
-        # ... backup and replace and merge /etc/kafka/zookeeper.properties
+        
+        # ... backup and replace | merge /etc/kafka/zookeeper.properties
         sudo sshpass -f $PASSWORDFILE ssh $SSHOPTIONS $SSHUSERNAME@$TMP_IP "sudo mv /etc/kafka/$CONFIG_FILE /etc/kafka/$CONFIG_FILE.orig"
         sudo sshpass -f $PASSWORDFILE ssh $SSHOPTIONS $SSHUSERNAME@$TMP_IP "sudo cp /tmp/$CONFIG_FILE /etc/kafka/$CONFIG_FILE"
         
-        # ... backup and replace and merge /etc/kafka/server.properties        
+        # ... backup and replace | merge /etc/kafka/server.properties        
+        sudo sshpass -f $PASSWORDFILE ssh $SSHOPTIONS $SSHUSERNAME@$TMP_IP "sudo mv /etc/confluent-control-center/$CC_CONFIG_FILE /etc/confluent-control-center/$CC_CONFIG_FILE.orig"
+        sudo sshpass -f $PASSWORDFILE ssh $SSHOPTIONS $SSHUSERNAME@$TMP_IP "sudo cp /tmp/$CC_CONFIG_FILE /etc/confluent-control-center/$CC_CONFIG_FILE"
+
+        # ... backup and replace | merge /etc/confluent-control-center/control-center-production.properties        
         sudo sshpass -f $PASSWORDFILE ssh $SSHOPTIONS $SSHUSERNAME@$TMP_IP "sudo mv /etc/kafka/$SERVER_CONFIG_FILE /etc/kafka/$SERVER_CONFIG_FILE.orig"
         sudo sshpass -f $PASSWORDFILE ssh $SSHOPTIONS $SSHUSERNAME@$TMP_IP "sudo cp /tmp/$SERVER_CONFIG_FILE /etc/kafka/$SERVER_CONFIG_FILE"
-        
+       
         # ... add new DNS records to the /etc/hosts file
         sudo sshpass -f $PASSWORDFILE ssh $SSHOPTIONS $SSHUSERNAME@$TMP_IP "cat /tmp/$OUTPUT_FILE | sudo tee -a /etc/hosts"
         #
         sleep 20
         sudo sshpass -f $PASSWORDFILE ssh $SSHOPTIONS $SSHUSERNAME@$TMP_IP "sudo systemctl enable confluent-zookeeper && sudo systemctl start confluent-zookeeper"
+        #sleep 10
+        #sudo sshpass -f $PASSWORDFILE ssh $SSHOPTIONS $SSHUSERNAME@$TMP_IP "sudo systemctl enable confluent-server && sudo systemctl start confluent-server"
+        #sleep 10
+        #sudo sshpass -f $PASSWORDFILE ssh $SSHOPTIONS $SSHUSERNAME@$TMP_IP "sudo systemctl enable confluent-control-center && sudo systemctl start confluent-control-center"
     fi
 
 done
 
-echo "------------------"
-echo "Confluent license:" $CONFLUENT_LICENSE
+echo "------------------ ... Done!"
+
