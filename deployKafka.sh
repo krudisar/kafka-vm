@@ -96,17 +96,16 @@ for ((i = 0 ; i < $KAFKA_NODES ; i++)); do
         cat $OUTPUT_FILE | sudo tee -a /etc/hosts
         #
         
-        #sleep 20
-        #sudo systemctl enable confluent-zookeeper
-        #sudo systemctl start confluent-zookeeper
+        sudo systemctl enable confluent-zookeeper
+        sudo systemctl start confluent-zookeeper
         
-        #sleep 30
-        #sudo systemctl enable confluent-server
-        #sudo systemctl start confluent-server
+        sleep 10
+        sudo systemctl enable confluent-server
+        sudo systemctl start confluent-server
         
-        #sleep 20
-        #sudo systemctl enable confluent-control-center
-        #sudo systemctl start confluent-control-center
+        sleep 20
+        sudo systemctl enable confluent-control-center
+        sudo systemctl start confluent-control-center
         
     else
         # for the rest of the cluster nodes we are going to configure them remotely
@@ -132,11 +131,11 @@ for ((i = 0 ; i < $KAFKA_NODES ; i++)); do
         # ... add new DNS records to the /etc/hosts file
         sudo sshpass -f $PASSWORDFILE ssh $SSHOPTIONS $SSHUSERNAME@$TMP_IP "cat /tmp/$OUTPUT_FILE | sudo tee -a /etc/hosts"
         #
-        #sleep 20
-        #sudo sshpass -f $PASSWORDFILE ssh $SSHOPTIONS $SSHUSERNAME@$TMP_IP "sudo systemctl enable confluent-zookeeper && sudo systemctl start confluent-zookeeper"
-        #sleep 30
-        #sudo sshpass -f $PASSWORDFILE ssh $SSHOPTIONS $SSHUSERNAME@$TMP_IP "sudo systemctl enable confluent-server && sudo systemctl start confluent-server"
-        #sleep 20
+
+        sudo sshpass -f $PASSWORDFILE ssh $SSHOPTIONS $SSHUSERNAME@$TMP_IP "sudo systemctl enable confluent-zookeeper && sudo systemctl start confluent-zookeeper"
+        sleep 10
+        sudo sshpass -f $PASSWORDFILE ssh $SSHOPTIONS $SSHUSERNAME@$TMP_IP "sudo systemctl enable confluent-server && sudo systemctl start confluent-server"
+        #sleep 10
         #sudo sshpass -f $PASSWORDFILE ssh $SSHOPTIONS $SSHUSERNAME@$TMP_IP "sudo systemctl enable confluent-control-center && sudo systemctl start confluent-control-center"
     fi
 
