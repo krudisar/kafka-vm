@@ -144,7 +144,7 @@ done
 
 echo " ... Testing time ..."
 
-# ------- Download & extract OSS Kafka scripts to test provisioned env --------
+# ------- Download & extract OSS Kafka scripts to test provisioned env -> based on https://kafka.apache.org/quickstart
 wget https://dlcdn.apache.org/kafka/2.8.0/kafka_2.13-2.8.0.tgz
 tar -xzf kafka_2.13-2.8.0.tgz
 cd kafka_2.13-2.8.0/bin/
