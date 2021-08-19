@@ -99,9 +99,9 @@ for ((i = 0 ; i < $KAFKA_NODES ; i++)); do
         sudo systemctl enable confluent-zookeeper
         sudo systemctl start confluent-zookeeper
         
-        #sleep 10
-        #sudo systemctl enable confluent-server
-        #sudo systemctl start confluent-server
+        sleep 10
+        sudo systemctl enable confluent-server
+        sudo systemctl start confluent-server
         
         #sleep 20
         #sudo systemctl enable confluent-control-center
@@ -134,7 +134,7 @@ for ((i = 0 ; i < $KAFKA_NODES ; i++)); do
 
         sudo sshpass -f $PASSWORDFILE ssh $SSHOPTIONS $SSHUSERNAME@$TMP_IP "sudo systemctl enable confluent-zookeeper && sudo systemctl start confluent-zookeeper"
         #sleep 10
-        #sudo sshpass -f $PASSWORDFILE ssh $SSHOPTIONS $SSHUSERNAME@$TMP_IP "sudo systemctl enable confluent-server && sudo systemctl start confluent-server"
+        sudo sshpass -f $PASSWORDFILE ssh $SSHOPTIONS $SSHUSERNAME@$TMP_IP "sudo systemctl enable confluent-server && sudo systemctl start confluent-server"
         #sleep 10
         #sudo sshpass -f $PASSWORDFILE ssh $SSHOPTIONS $SSHUSERNAME@$TMP_IP "sudo systemctl enable confluent-control-center && sudo systemctl start confluent-control-center"
     fi
