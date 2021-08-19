@@ -11,6 +11,9 @@ SERVER_CONFIG_FILE=server.properties
 CC_CONFIG_FILE=control-center-production.properties
 MACHINE_NAME_PREFIX=kafka
 VM_DNS_DOMAIN=krdemo.local
+#--
+BOOTSTRAP_SERVERS=""
+ZOOKEEPER_CONNECT=""
 
 declare -a arrayIps=()
 declare -a arrayFqdns=()
@@ -24,7 +27,6 @@ echo -e '\nDNS Records follow ...\n'
 for ((i = 0 ; i < $KAFKA_NODES ; i++)); do
 
   JSON_QUERY='.resources."'$VM_NAME'['$i']".resourceName'
-  #NODE_NAME=`jq $JSON_QUERY $JSON_FILE | sed -e 's/^"//' -e 's/"$//'`
   NODE_NAME=$MACHINE_NAME_PREFIX$((i+1))
   
   JSON_QUERY='.resources."'$VM_NAME'['$i']".networks[0].address'
@@ -60,11 +62,19 @@ for ((i = 1 ; i <= $KAFKA_NODES ; i++)); do
 
   MACHINE_NAME=$MACHINE_NAME_PREFIX$i
   echo server.$i=$MACHINE_NAME.$VM_DNS_DOMAIN:2888:3888 >> $CONFIG_FILE
-
+  
+  # prepare string for Confluent Control Center configuration
+  BOOTSTRAP_SERVERS+="$MACHINE_NAME.$VM_DNS_DOMAIN:9092"
+  if (( i < $KAFKA_NODES )); then
+    BOOTSTRAP_SERVERS+=","
+  fi
+  
 done
 
 echo "autopurge.snapRetainCount=3" >> $CONFIG_FILE
 echo "autopurge.purgeInterval=24" >> $CONFIG_FILE
+
+echo "*** bootstrap.servers=$BOOTSTRAP_SERVERS"
 
 # ------- /etc/kafka/server.properties --------
 sudo sed -i 's/^broker.id/#&/' /etc/kafka/$SERVER_CONFIG_FILE
