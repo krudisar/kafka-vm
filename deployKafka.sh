@@ -73,8 +73,8 @@ echo "broker.id.generation.enable=true" | sudo tee -a /etc/kafka/$SERVER_CONFIG_
 echo "zookeeper.connect=kafka1.$VM_DNS_DOMAIN:2181" | sudo tee -a /etc/kafka/$SERVER_CONFIG_FILE
 
 # ------- /etc/confluent-control-center/control-center-production.properties --------
-echo 'bootstrap.servers=kafka1.krdemo.local:9092,kafka2.krdemo.local:9092' | sudo tee -a /etc/confluent-control-center/$CC_CONFIG_FILE
-echo 'zookeeper.connect=kafka1.krdemo.local:2181,kafka2.krdemo.local:2181' | sudo tee -a /etc/confluent-control-center/$CC_CONFIG_FILE
+echo 'bootstrap.servers=kafka1.krdemo.local:9092,kafka2.krdemo.local:9092,kafka3.krdemo.local:9092' | sudo tee -a /etc/confluent-control-center/$CC_CONFIG_FILE
+echo 'zookeeper.connect=kafka1.krdemo.local:2181,kafka2.krdemo.local:2181,kafka3.krdemo.local:2181' | sudo tee -a /etc/confluent-control-center/$CC_CONFIG_FILE
 echo "confluent.license="$CONFLUENT_LICENSE | sudo tee -a /etc/confluent-control-center/$CC_CONFIG_FILE
 
 # ------- Copy files to the rest of the cluster's nodes and enable services --------
@@ -102,10 +102,6 @@ for ((i = 0 ; i < $KAFKA_NODES ; i++)); do
         #sleep 5
         sudo systemctl enable confluent-server
         sudo systemctl start confluent-server
-        
-        #sleep 10
-        #sudo systemctl enable confluent-control-center
-        #sudo systemctl start confluent-control-center
         
     else
         # for the rest of the cluster nodes we are going to configure them remotely
@@ -140,5 +136,14 @@ for ((i = 0 ; i < $KAFKA_NODES ; i++)); do
     fi
 
 done
+
+# wait a minute and start Control Center
+sleep 60
+sudo systemctl enable confluent-control-center
+sudo systemctl start confluent-control-center
+
+# wait a minute as Control Center needs some time to initialize ... 
+sleep 60
+# when ready, you can access Control Center UI at http://node_1_ip:9021
 
 echo " ... Testing time ..."
