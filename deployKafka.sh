@@ -63,10 +63,13 @@ for ((i = 1 ; i <= $KAFKA_NODES ; i++)); do
   MACHINE_NAME=$MACHINE_NAME_PREFIX$i
   echo server.$i=$MACHINE_NAME.$VM_DNS_DOMAIN:2888:3888 >> $CONFIG_FILE
   
-  # prepare string for Confluent Control Center configuration
+  # prepare strings for Confluent Control Center configuration
   BOOTSTRAP_SERVERS+="$MACHINE_NAME.$VM_DNS_DOMAIN:9092"
+  ZOOKEEPER_CONNECT+="$MACHINE_NAME.$VM_DNS_DOMAIN:2181"
+  
   if (( i < $KAFKA_NODES )); then
     BOOTSTRAP_SERVERS+=","
+    ZOOKEEPER_CONNECT+=","
   fi
   
 done
@@ -83,8 +86,11 @@ echo "broker.id.generation.enable=true" | sudo tee -a /etc/kafka/$SERVER_CONFIG_
 echo "zookeeper.connect=kafka1.$VM_DNS_DOMAIN:2181" | sudo tee -a /etc/kafka/$SERVER_CONFIG_FILE
 
 # ------- /etc/confluent-control-center/control-center-production.properties --------
-echo 'bootstrap.servers=kafka1.krdemo.local:9092,kafka2.krdemo.local:9092,kafka3.krdemo.local:9092' | sudo tee -a /etc/confluent-control-center/$CC_CONFIG_FILE
-echo 'zookeeper.connect=kafka1.krdemo.local:2181,kafka2.krdemo.local:2181,kafka3.krdemo.local:2181' | sudo tee -a /etc/confluent-control-center/$CC_CONFIG_FILE
+#echo 'bootstrap.servers=kafka1.krdemo.local:9092,kafka2.krdemo.local:9092,kafka3.krdemo.local:9092' | sudo tee -a /etc/confluent-control-center/$CC_CONFIG_FILE
+#echo 'zookeeper.connect=kafka1.krdemo.local:2181,kafka2.krdemo.local:2181,kafka3.krdemo.local:2181' | sudo tee -a /etc/confluent-control-center/$CC_CONFIG_FILE
+#
+echo 'bootstrap.servers='$BOOTSTRAP_SERVERS | sudo tee -a /etc/confluent-control-center/$CC_CONFIG_FILE
+echo 'zookeeper.connect='$ZOOKEEPER_CONNECT | sudo tee -a /etc/confluent-control-center/$CC_CONFIG_FILE
 echo "confluent.license="$CONFLUENT_LICENSE | sudo tee -a /etc/confluent-control-center/$CC_CONFIG_FILE
 
 # ------- Copy files to the rest of the cluster's nodes and enable services --------
@@ -105,11 +111,9 @@ for ((i = 0 ; i < $KAFKA_NODES ; i++)); do
         sudo cp $CONFIG_FILE /etc/kafka/$CONFIG_FILE
         cat $OUTPUT_FILE | sudo tee -a /etc/hosts
         #
-        
         sudo systemctl enable confluent-zookeeper
         sudo systemctl start confluent-zookeeper
-        
-        #sleep 5
+        #
         sudo systemctl enable confluent-server
         sudo systemctl start confluent-server
         
@@ -139,10 +143,7 @@ for ((i = 0 ; i < $KAFKA_NODES ; i++)); do
         #
 
         sudo sshpass -f $PASSWORDFILE ssh $SSHOPTIONS $SSHUSERNAME@$TMP_IP "sudo systemctl enable confluent-zookeeper && sudo systemctl start confluent-zookeeper"
-        #sleep 5
         sudo sshpass -f $PASSWORDFILE ssh $SSHOPTIONS $SSHUSERNAME@$TMP_IP "sudo systemctl enable confluent-server && sudo systemctl start confluent-server"
-        #sleep 10
-        #sudo sshpass -f $PASSWORDFILE ssh $SSHOPTIONS $SSHUSERNAME@$TMP_IP "sudo systemctl enable confluent-control-center && sudo systemctl start confluent-control-center"
     fi
 
 done
