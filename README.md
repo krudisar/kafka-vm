@@ -1,4 +1,4 @@
-# Kafka-VM - Confluent Kafka HA Cluster Deployment using vRealize Automation
+# Confluent Kafka HA Cluster Deployment using vRealize Automation on vSphere
 
 ## **Deployment requirements:**
 
