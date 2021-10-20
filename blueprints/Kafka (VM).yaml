@@ -1,0 +1,110 @@
+formatVersion: 1
+name: Kafka (VM)
+version: 1
+inputs:
+  image:
+    type: string
+    enum:
+      - centos
+    default: centos
+    title: Select Image/OS
+  size:
+    type: string
+    enum:
+      - small
+      - medium
+      - large
+    default: small
+    description: Size of Nodes
+    title: Node Size
+resources:
+  kafka-node:
+    type: Cloud.Machine
+    metadata:
+      layoutPosition:
+        - 0
+        - 0
+    properties:
+      count: 5
+      flavor: '${input.size}'
+      image: '${input.image}'
+      cloudConfig: |
+        #cloud-config
+        users:
+          - name: demo
+            groups: [ wheel ]
+            sudo: ['ALL=(ALL) NOPASSWD:ALL']
+            shell: /bin/bash
+            plain_text_passwd: ${secret.user_demo_password}
+            lock_passwd: false
+            ssh_pwauth: true
+            chpasswd: { expire: false }
+        preserve-hostname: false
+        hostname: ${self.hostname}
+        fqdn: ${self.hostname}.demo-cas.local
+        packages:
+          - git
+          - httpd
+          
+        #---------------------------------
+        write_files:
+          - path: /etc/yum.repos.d/confluent.repo
+            content: |
+              [Confluent.dist]
+              name=Confluent repository (dist)
+              baseurl=https://packages.confluent.io/rpm/6.2/$releasever
+              gpgcheck=1
+              gpgkey=https://packages.confluent.io/rpm/6.2/archive.key
+              enabled=1
+            
+              [Confluent]
+              name=Confluent repository
+              baseurl=https://packages.confluent.io/rpm/6.2
+              gpgcheck=1
+              gpgkey=https://packages.confluent.io/rpm/6.2/archive.key
+              enabled=1
+              
+        #---------------------------------
+        runcmd:
+          - #sed -i 's/permissive/disabled/g' /etc/selinux/config /etc/selinux/config
+          - echo "LANG=en_US.utf-8" > /etc/environment
+          - echo "LC_ALL=en_US.utf-8" > /etc/environment
+          - # yum -y update -> DISABLED TO SPEED UP DEPLOYMENT
+          - systemctl stop firewalld
+          - systemctl disable firewalld
+          - #sed -i -e '/^PermitRootLogin/s/^.*$/PermitRootLogin no/' /etc/ssh/sshd_config
+          - # enable ssh password authentication
+          - sed -i 's|[#]*PasswordAuthentication no|PasswordAuthentication yes|g' /etc/ssh/sshd_config
+          - systemctl restart sshd
+          
+        #---------------------------------
+          - yum install java-11-openjdk -y
+          - yum install curl which sshpass jq -y
+          - echo '${secret.user_demo_password}' > /root/.sshpassword
+          - rpm --import https://packages.confluent.io/rpm/6.2/archive.key
+          - yum clean all
+          - sleep 20
+          - yum install confluent-platform -y
+          - hostnamectl set-hostname kafka${count.index+1}.demo.local
+          - INDEX=`hostname -s`
+          - echo ${count.index+1} > /var/lib/zookeeper/myid
+        #---------------------------------
+
+          - rm -rf /tmp/*
+          - echo "Done. ..." >> /tmp/vra.txt
+          - # final reboot
+          - #systemctl reboot
+      constraints:
+        - tag: 'env:vsphere'
+      networks:
+        - network: '${resource.NSX.id}'
+  NSX:
+    type: Cloud.NSX.Network
+    metadata:
+      layoutPosition:
+        - 1
+        - 0
+    properties:
+      networkType: routed
+      constraints:
+        - tag: 'net:on-demand'
