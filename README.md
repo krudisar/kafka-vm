@@ -3,7 +3,9 @@
 ## **Deployment requirements:**
 
 ##Cloud Assembly
+```
 > Infrastructure > Secrets > user_demo_password
+```
 
 ##Code Stream 
 ```
