@@ -1,10 +1,10 @@
-# kafka-vm
+# Kafka-VM - Confluent Kafka HA Cluster Deployment using vRealize Automation
 
-*Deployment requirements:*
+## **Deployment requirements:**
 
-Cloud Assembly
--> Infrastructure > Secrets > user_demo_password
+##Cloud Assembly
+###-> Infrastructure > Secrets > user_demo_password
 
-Code Stream 
--> Variables > confluentLicense (type: REGULAR)
--> Variables > sshPassword (type: SECRET)
+##Code Stream 
+###-> Variables > confluentLicense (type: REGULAR)
+###-> Variables > sshPassword (type: SECRET)
