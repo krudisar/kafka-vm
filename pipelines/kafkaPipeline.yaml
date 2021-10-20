@@ -1,0 +1,75 @@
+---
+project: Field Demo
+kind: PIPELINE
+name: kafkaPipeline
+icon: organization,left, is-pink
+enabled: true
+concurrency: 10
+workspace:
+  type: DOCKER
+  endpoint: ''
+  image: ''
+  registry: ''
+  path: ''
+  autoCloneForTrigger: false
+  limits:
+    cpu: 1.0
+    memory: 512
+stageOrder:
+- kafkaDeployment
+stages:
+  kafkaDeployment:
+    taskOrder:
+    - provisionInfrastructure
+    - sshToFirstNode
+    tasks:
+      sshToFirstNode:
+        type: SSH
+        input:
+          script: |+
+            sleep 300
+
+            # ... save vRA deployment context to JSON
+            echo '${kafkaDeployment.provisionInfrastructure.output.deploymentDetails}' >> deployment.json
+
+            # ... Confluent license to be used in other script
+            export CONFLUENT_LICENSE
+
+            # ... install pre-reqs
+            sudo yum install jq -y
+
+            # ... install Confluent Platform binaries
+            #wget https://raw.githubusercontent.com/krudisar/kafka-vm/main/installConfluentBinaries.sh
+            #bash installConfluentBinaries.sh
+            #sleep 10
+            # -----------------------------------
+
+            # ... download deployment script from GitHub
+            wget https://raw.githubusercontent.com/krudisar/kafka-vm/main/deployKafka.sh
+
+            # prepare files, copy them to all nodes and configure & start services
+            bash deployKafka.sh
+
+            echo 'Done!'
+
+          username: demo
+          password: ${var.sshPassword}
+          passphrase: ''
+          privatekey: ''
+          host: ${kafkaDeployment.provisionInfrastructure.output.deploymentDetails.resources['kafka-node[0]'].networks[0].address}
+          workingDirectory: ''
+          arguments: [
+            ]
+          environmentVariables:
+            CONFLUENT_LICENSE: ${var.confluentLicense}
+          continueOnCommandFailure: false
+      provisionInfrastructure:
+        type: Blueprint
+        input:
+          action: CreateDeployment
+          deploymentName: Kafka-Infrastructure
+          blueprint: Kafka (VM)
+          version: '8'
+          parameters:
+            image: centos
+            size: medium
